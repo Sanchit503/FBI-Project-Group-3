@@ -272,9 +272,9 @@ plt.rcParams.update({
 def load_assets():
     BASE_DIR = os.path.dirname(__file__)
 
-    model_path  = os.path.join(BASE_DIR, "outputs_v2", "final_catboost_screener.pkl")
-    sample_path = os.path.join(BASE_DIR, "outputs_v2", "X_test_sample.csv")
-    config_path = os.path.join(BASE_DIR, "outputs_v2", "screening_config.json")
+    model_path  = os.path.join(BASE_DIR, "final_catboost_screener.pkl")
+    sample_path = os.path.join(BASE_DIR, "X_test_sample.csv")
+    config_path = os.path.join(BASE_DIR, "screening_config.json")
     
     # --- NEW: Load the real labels ---
     y_path = os.path.join(BASE_DIR, "y_test_sample.csv") 
