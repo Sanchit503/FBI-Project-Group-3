@@ -272,9 +272,13 @@ plt.rcParams.update({
 def load_assets():
     BASE_DIR = os.path.dirname(__file__)
 
-    model_path  = os.path.join(BASE_DIR, "final_catboost_screener.pkl")
-    sample_path = os.path.join(BASE_DIR, "X_test_sample.csv")
-    config_path = os.path.join(BASE_DIR, "screening_config.json")
+    model_path  = os.path.join(BASE_DIR, "outputs_v2", "final_catboost_screener.pkl")
+    sample_path = os.path.join(BASE_DIR, "outputs_v2", "X_test_sample.csv")
+    config_path = os.path.join(BASE_DIR, "outputs_v2", "screening_config.json")
+    
+    # --- NEW: Load the real labels ---
+    y_path = os.path.join(BASE_DIR, "y_test_sample.csv") 
+    y_sample = pd.read_csv(y_path) if os.path.exists(y_path) else None
 
     model    = joblib.load(model_path)
     X_sample = pd.read_csv(sample_path)
@@ -282,9 +286,10 @@ def load_assets():
     with open(config_path) as f:
         config = json.load(f)
 
-    return model, X_sample, config
+    return model, X_sample, config, y_sample
 
-model, X_sample, config = load_assets()
+# Update the unpacking line right below the function:
+model, X_sample, config, y_sample = load_assets()
 THRESHOLD   = config['opt_thresh']
 SENS_TARGET = config['sensitivity_target']
 
@@ -416,7 +421,8 @@ with tab1:
     n_present = patient_data.notna().sum(axis=1).iloc[0]
     completeness_pct = n_present / n_total * 100
 
-    col_score, col_gauge, col_action = st.columns([1, 1, 2])
+    # Change the columns to fit the 4th validation card
+    col_score, col_gauge, col_action, col_val = st.columns([1.1, 1, 1.6, 1.2])
 
     with col_score:
         num_color = '#c0392b' if is_high else '#1a7a4a'
@@ -426,7 +432,7 @@ with tab1:
         completeness_color = '#c0392b' if completeness_pct < 50 else '#b8860b' if completeness_pct < 75 else '#1a7a4a'
         
         st.markdown(f"""
-        <div class="card {border_cl}" style="text-align:center; padding:28px 20px;">
+        <div class="card {border_cl}" style="text-align:center; padding:28px 20px; height:100%;">
           <div class="risk-label">Potassium Risk Score</div>
           <div class="risk-num" style="color:{num_color};">{risk_pct:.1f}%</div>
           <div class="risk-sub">Screening threshold: {THRESHOLD*100:.1f}%</div>
@@ -437,7 +443,7 @@ with tab1:
           </div>
           <div style="margin-top:14px; font-size:.72rem; color:{completeness_color};
                font-family:'IBM Plex Mono',monospace; letter-spacing:.04em;">
-            DATA COMPLETENESS: {completeness_pct:.0f}% ({n_present}/{n_total} features present)
+            COMPLETENESS: {completeness_pct:.0f}% ({n_present}/{n_total})
           </div>
         </div>
         """, unsafe_allow_html=True)
@@ -458,7 +464,7 @@ with tab1:
         xi2 = 0.72*np.cos(theta_f[::-1]); yi2 = 0.72*np.sin(theta_f[::-1])
         ax_g.fill(np.concatenate([xo2,xi2]), np.concatenate([yo2,yi2]), color=seg_col, zorder=2, alpha=0.85)
         na = np.pi - risk_prob*np.pi
-        ax_g.plot([0, 0.82*np.cos(na)], [0, 0.82*np.sin(na)], color='#1c2b3a', linewidth=2.5, zorder=5)
+        ax_g.plot([0, 0.82*np.cos(na)],[0, 0.82*np.sin(na)], color='#1c2b3a', linewidth=2.5, zorder=5)
         ax_g.add_patch(plt.Circle((0,0), 0.08, color='#1c2b3a', zorder=6))
         ax_g.add_patch(plt.Circle((0,0), 0.05, color='#fff', zorder=7))
         ax_g.text(0, 0.32, f"{risk_pct:.1f}%", ha='center', va='center',
@@ -466,38 +472,76 @@ with tab1:
         ax_g.text(-1.1, -0.18, '0%',   fontsize=7, color='#8fa0b0', ha='center')
         ax_g.text( 1.1, -0.18, '100%', fontsize=7, color='#8fa0b0', ha='center')
         ta = np.pi - THRESHOLD*np.pi
-        ax_g.plot([1.05*np.cos(ta), 1.15*np.cos(ta)],
-                  [1.05*np.sin(ta), 1.15*np.sin(ta)], color='#b8860b', linewidth=2, zorder=8)
+        ax_g.plot([1.05*np.cos(ta), 1.15*np.cos(ta)],[1.05*np.sin(ta), 1.15*np.sin(ta)], color='#b8860b', linewidth=2, zorder=8)
         st.pyplot(fig_g, transparent=True)
         plt.close(fig_g)
-        st.caption(f"Gold marker = screening threshold ({THRESHOLD*100:.1f}%)")
+        st.caption(f"Threshold marker = {THRESHOLD*100:.1f}%")
 
     with col_action:
         if is_high:
             st.markdown("""
-            <div class="alert-danger">
-              <h3>HIGH RISK — Immediate Action Recommended</h3>
+            <div class="alert-danger" style="height:100%;">
+              <h3>HIGH RISK — Action Required</h3>
               <p>
                 Hyperkalemia predicted within <strong>6 hours</strong>.<br>
-                &nbsp;&nbsp;Order urgent bedside blood-gas potassium check<br>
-                &nbsp;&nbsp;Review ACE-inhibitor and spironolactone dosing<br>
-                &nbsp;&nbsp;Consider calcium gluconate and potassium-shifting agents<br>
-                &nbsp;&nbsp;Apply continuous cardiac monitoring (ECG)
+                &nbsp;&nbsp;• Order bedside blood-gas check<br>
+                &nbsp;&nbsp;• Review ACEi/spironolactone dosing<br>
+                &nbsp;&nbsp;• Consider calcium gluconate<br>
+                &nbsp;&nbsp;• Apply continuous ECG monitoring
               </p>
             </div>""", unsafe_allow_html=True)
         else:
             st.markdown("""
-            <div class="alert-success">
-              <h3>LOW RISK — Continue Standard Monitoring</h3>
+            <div class="alert-success" style="height:100%;">
+              <h3>LOW RISK — Standard Monitoring</h3>
               <p>
-                No hyperkalemia event predicted in the next 6-hour window.<br>
-                &nbsp;&nbsp;Maintain current care plan and monitoring schedule<br>
-                &nbsp;&nbsp;Re-evaluate at next scheduled potassium draw<br>
-                &nbsp;&nbsp;Monitor urine output and fluid balance routinely<br>
-                &nbsp;&nbsp;NPV of this clearance: {:.1f}%
+                No hyperkalemia event predicted.<br>
+                &nbsp;&nbsp;• Maintain current care plan<br>
+                &nbsp;&nbsp;• Re-evaluate at next lab draw<br>
+                &nbsp;&nbsp;• Monitor urine output<br>
+                &nbsp;&nbsp;• NPV: {:.1f}%
               </p>
             </div>""".format(config['npv']*100), unsafe_allow_html=True)
 
+    with col_val:
+        # --- NEW: Display the Real Outcome comparison ---
+        if y_sample is not None:
+            actual_outcome = int(y_sample.iloc[idx]['label']) 
+            
+            if actual_outcome == 1:
+                real_text = "CONFIRMED HYPERK"
+                real_color = "var(--danger)"
+                real_bg = "#fdf3f2"
+            else:
+                real_text = "SAFE / NORMAL K+"
+                real_color = "var(--success)"
+                real_bg = "#f2faf5"
+
+            # Determine the confusion matrix status
+            if is_high and actual_outcome == 1:
+                val_status = "<span style='color:var(--success);'>✅ True Positive</span><br>Correctly flagged"
+            elif is_high and actual_outcome == 0:
+                val_status = "<span style='color:var(--warn);'>⚠️ False Positive</span><br>False alarm (overtriage)"
+            elif not is_high and actual_outcome == 0:
+                val_status = "<span style='color:var(--success);'>✅ True Negative</span><br>Correctly cleared"
+            else:
+                val_status = "<span style='color:var(--danger);'>❌ False Negative</span><br>Missed prediction!"
+
+            st.markdown(f"""
+            <div class="card" style="height:100%; border-left: 5px solid {real_color}; padding:20px 16px; display:flex; flex-direction:column; justify-content:center;">
+                <div style="font-family:var(--mono); font-size:.65rem; letter-spacing:.12em; color:var(--txt3); margin-bottom:12px; text-transform:uppercase; text-align:center;">
+                    Actual Outcome
+                </div>
+                <div style="background:{real_bg}; color:{real_color}; font-weight:700; padding:12px 6px; border-radius:8px; text-align:center; font-size:.85rem; margin-bottom:12px; border:1px solid {real_color}40;">
+                    {real_text}
+                </div>
+                <div style="font-size:.8rem; color:var(--txt2); text-align:center; padding-top:12px; border-top:1px solid var(--card-border); line-height:1.4;">
+                    <strong>AI Validation:</strong><br>{val_status}
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+        else:
+            st.warning("`y_test_sample.csv` not found.")
     # ── Clinical Snapshot ─────────────────────────────────────────
     st.markdown("""<div class="sec-head">
       <span class="dot" style="background:#1060a8;"></span>
