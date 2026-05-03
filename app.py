@@ -14,6 +14,10 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 import warnings
 import os
+import os
+import joblib
+import pandas as pd
+import json
 warnings.filterwarnings('ignore')
 
 # ─────────────────────────────────────────────────────────────────────
@@ -266,9 +270,11 @@ plt.rcParams.update({
 # ─────────────────────────────────────────────────────────────────────
 @st.cache_resource
 def load_assets():
-    model_path  = os.path.join(BASE_DIR, "outputs_v2", "final_catboost_screener.pkl")
-    sample_path = os.path.join(BASE_DIR, "outputs_v2", "X_test_sample.csv")
-    config_path = os.path.join(BASE_DIR, "outputs_v2", "screening_config.json")
+    BASE_DIR = os.path.dirname(__file__)
+
+    model_path  = os.path.join(BASE_DIR, "final_catboost_screener.pkl")
+    sample_path = os.path.join(BASE_DIR, "X_test_sample.csv")
+    config_path = os.path.join(BASE_DIR, "screening_config.json")
 
     model    = joblib.load(model_path)
     X_sample = pd.read_csv(sample_path)
