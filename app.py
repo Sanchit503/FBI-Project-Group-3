@@ -1013,7 +1013,7 @@ with tab2:
     with sc1:
         st.markdown("**Feature Importance Summary (Beeswarm) — Top Predictive Signals**")
         try:
-            st.image(os.path.join(BASE_DIR, 'outputs_v2', 'shap_screening_summary.png'),
+            st.image(os.path.join(BASE_DIR, 'shap_screening_summary.png'),
                      caption="SHAP beeswarm: each point is one flagged observation. Color = feature value. X-axis = direction and magnitude of impact on the risk score.",
                      use_container_width=True)
         except Exception as e:
